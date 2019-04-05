@@ -127,9 +127,9 @@ int main(int argc, char* argv[])
 					}
 					// <명령어 파싱 + 블록디바이스 접근 + 작업 수행(r/w) + 수행한 정보 보내기>
 					else{
-						parsing_cmd(buf, struct requested_work[ep_events[i].data.fd]);
+						//parsing_cmd(buf, struct requested_work[ep_events[i].data.fd]);
 						
-						블록디바이스에 접근해서 작업 수행!!
+						//블록디바이스에 접근해서 작업 수행!!
 						
 						sendMsg(alert_buf, str_len, ep_events[i].data.fd);
 					}
@@ -171,3 +171,34 @@ void sendMsg(char *msg, int len)
 	for(i=0; i < clntCnt; i++)
 		write(clntNumber[i], msg, len); 	// 다른 연결된 클라이언트 소켓으로 msg 전송
 }
+
+
+
+void parsing_cmd(char *cmd, struct requested_work)
+{
+	int N = 0;
+	char *s1 = malloc(sizeof(char) *strlen(cmd));
+
+	strcpy(s1, cmd);
+
+	char* ptr = strtok(s1, ",");
+
+	while(ptr != NULL)
+	{
+		if((N == 0)&&((strncmp(ptr,"r",1)==0)||(strncmp(ptr,"w",1)==0)))
+			strcpy(requested_work.operator, ptr);
+		else if(N == 1)
+			requested_work.blocknum = atoi(ptr);
+		else
+		{
+			rmvfirst(ptr);
+			strcpy(requested_work.data, ptr);
+		}
+
+		ptr = strtok(NULL, ",");
+		N++;
+
+	}
+}
+
+
