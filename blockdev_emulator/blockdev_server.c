@@ -127,10 +127,23 @@ int main(int argc, char* argv[])
 					}
 					// <명령어 파싱 + 블록디바이스 접근 + 작업 수행(r/w) + 수행한 정보 보내기>
 					else{
-						//parsing_cmd(buf, struct requested_work[ep_events[i].data.fd]);
 						
-						//블록디바이스에 접근해서 작업 수행!!
+						parsing_cmd(buf, struct requested_work[ep_events[i].data.fd]);
 						
+						if(strcmp(requested_work[ep_events[i].data.fd].operator, "r") == 0)
+						{
+							bring_data(struct requested_work[ep_events[i].data.fd]);
+						}
+						if else(strcmp(requested_work[ep_events[i].data.fd].operator, "w") == 0)
+						{
+							store_data(struct requested_work[ep_events[i].data.fd]);
+						}
+						else
+						{
+							printf("operator parsing error\n");
+						}
+					
+
 						sendMsg(alert_buf, str_len, ep_events[i].data.fd);
 					}
 				
@@ -202,3 +215,44 @@ void parsing_cmd(char *cmd, struct requested_work)
 }
 
 
+
+void bring_data(struct requested_work)
+{
+	//data를 읽어오고 있습니다. 
+	int fd;
+	
+	if((fd = open(_path, O_RDONLY)) == -1)
+	{
+		printf("%s open error\n", _path);	
+		exit(1);
+	}
+		
+	printf("fd = %d\n",fd);
+	//read_len = read(fd, requested_data.data, strlen(requested_work.data));
+	if(read_len == -1)
+	{
+		printf("read error in bring_data\n");
+	}
+}
+
+
+
+void store_data(struct requested_work)
+{
+
+	int fd;
+
+	if((fd = open(_path, O_RDWR | O_CREAT , 0644)) == -1)
+	{
+		printf("%s open error\n", _path);	
+		exit(1);
+	}	
+	printf("fd = %d\n",fd);
+	
+	//write_len = write(fd, requested_data.data, strlen(requested_work.data));
+	if(write_len == -1)
+	{
+		printf("write error in store_data\n");
+	}
+	
+}
