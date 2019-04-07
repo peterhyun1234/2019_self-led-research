@@ -128,7 +128,7 @@ int main(int argc, char* argv[])
 					// <명령어 파싱 + 블록디바이스 접근 + 작업 수행(r/w) + 수행한 정보 보내기>
 					else{
 						
-						parsing_cmd(buf, struct requested_work[ep_events[i].data.fd]);
+						parsing_cmd(buf, struct requested_work);
 						
 						if(strcmp(requested_work[ep_events[i].data.fd].operator, "r") == 0)
 						{
@@ -248,7 +248,7 @@ void store_data(struct requested_work)
 		exit(1);
 	}	
 	printf("fd = %d\n",fd);
-	
+//열고 띄어쓰기! lseek으로 일정 위치에 data저장!!	
 	//write_len = write(fd, requested_data.data, strlen(requested_work.data));
 	if(write_len == -1)
 	{
