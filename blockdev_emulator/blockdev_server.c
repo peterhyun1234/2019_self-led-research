@@ -11,10 +11,22 @@
 #define BUF_SIZE 4096
 #define EPOLL_SIZE 50	// epoll 객체로 관리할 수 있는 파일 디스크립터의 개수
 #define MAX_CLNT 100	// 모니터링 할 파일 디스크립터의 수 지정
+#define file_name "Block_storage.txt"
+#define block_size 512
 
+struct requested_work{
+	char operator[2];
+	int blocknum;
+	char data[BUF_SIZE];
+};
+
+void parsing_cmd(char *cmd, struct requested_work *req);
+void store_data(int block_number, char *data);
+void bring_data(struct requested_work *req);
+void rmv_first(char *buf);
 void error_handling(char* buf);
 void setNonBlockingMod(int fd);
-void sendMsg(char *msg, int len);
+void sendMsg(char *msg, int fd);
 
 static int clntNumber[MAX_CLNT];
 static int clntCnt=0;	
@@ -24,9 +36,13 @@ int main(int argc, char* argv[])
 	int serv_sock, clnt_sock;
 	struct sockaddr_in serv_adr, clnt_adr;
 	socklen_t adr_sz;
+
+	struct requested_work rqw[EPOLL_SIZE];	// 관리하는 클라이언트한테 받는 명령
+
 	int str_len, i, j;
-	char buf[BUF_SIZE];
-	char alert_buf[BUF_SIZE];
+
+	char buf[BUF_SIZE];	//받는 명령어를 담는 버퍼
+	char alert_buf[BUF_SIZE];	// client에게 보낼 수행 결과
 
 	// eppoll 사용할 때 필요한 변수선언
 	struct epoll_event* ep_events;
@@ -89,7 +105,6 @@ int main(int argc, char* argv[])
 				event.data.fd = clnt_sock; //accept된 소켓을 data의 fd에 지정
 				epoll_ctl(epfd, EPOLL_CTL_ADD, clnt_sock, &event); //epoll 객체에 듣기소켓을 등록
 				clntNumber[clntCnt++] = clnt_sock; //연결된 fd를 클라이언트 number에 지정.(누가 들어오고 누가 나가는 지 알리기 위해)
-				printf("connected client: %d \n", clnt_sock);
 			}
 
 
@@ -99,7 +114,7 @@ int main(int argc, char* argv[])
 			{
 				while(1) // 루프를 돌면서 read를 충분히 호출한다.
 				{
-					str_len=read(ep_events[i].data.fd, buf, BUF_SIZE);	// 읽을 데이터를 buf에 저장
+					str_len = read(ep_events[i].data.fd, buf, BUF_SIZE);	// 읽을 데이터를 buf에 저장
 					
 					if(str_len==0) 	// client가 연결을 끊을 때
 					{
@@ -125,18 +140,20 @@ int main(int argc, char* argv[])
 						if(errno = EAGAIN)
 							break;
 					}
-					// <명령어 파싱 + 블록디바이스 접근 + 작업 수행(r/w) + 수행한 정보 보내기>
+
+// <명령어 파싱 + 블록디바이스 접근 + 작업 수행(r/w) + 수행한 정보 보내기>
 					else{
 						
-						parsing_cmd(buf, struct requested_work);
+						parsing_cmd(buf, &rqw[ep_event[i].data.fd]);
 						
-						if(strcmp(requested_work[ep_events[i].data.fd].operator, "r") == 0)
+						if((strcmp(rqw[ep_event[i].data.fd].operator, "r") == 0) || (strcmp(rqw[ep_event[i].data.fd].operator, "R") == 0))	//데이터 읽기
 						{
-							bring_data(struct requested_work[ep_events[i].data.fd]);
+							bring_data(&rqw[ep_events[i].data.fd]);
+							sendMsg(alert_buf, ep_events[i].data.fd);	// 수행한 정보 client에게 보내기
 						}
-						if else(strcmp(requested_work[ep_events[i].data.fd].operator, "w") == 0)
+						if else((strcmp(rqw[ep_event[i].data.fd].operator, "w") == 0) || (strcmp(rqw[ep_event[i].data.fd].operator, "W") == 0))	//데이터 쓰기
 						{
-							store_data(struct requested_work[ep_events[i].data.fd]);
+							store_data(rqw[ep_events[i].data.fd].blocknum, rqw[ep_events[i].data.fd].data);
 						}
 						else
 						{
@@ -144,13 +161,7 @@ int main(int argc, char* argv[])
 						}
 					
 
-						sendMsg(alert_buf, str_len, ep_events[i].data.fd);
 					}
-				
-				
-				
-				
-				
 				
 				}
 			}
@@ -161,6 +172,10 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
+
+
+
+
 void error_handling(char *buf)
 {
 	fputs(buf, stderr);
@@ -168,6 +183,9 @@ void error_handling(char *buf)
 	exit(1);
 } 
 	
+
+
+
 // 소켓을 논 블로킹 모드로 동작
 // - read함수를 쓰면 수신 버퍼에 남은 데이터가 없으면 블로킹이 되기 때문에 read 함수를 여러번 호출할 경우 이 함수 사용 ㄱㄱ 
 // - read함수는 수신 버퍼에 남아있는 데이터가 없으면 에러코드를 반환한다.
@@ -177,17 +195,25 @@ void setNonBlockingMod(int fd)
 	fcntl(fd, F_SETFL, flag | O_NONBLOCK); // 기존 플래그에서 논블록 추가 + 플래그 지정
 }
 
+
+
+
 // 자신을 포함한 다른 클라이언트에게 수행되는 작업정보 전송
-void sendMsg(char *msg, int len)
+void sendMsg(char *msg, int fd)
 {
-	int i=0;
-	for(i=0; i < clntCnt; i++)
-		write(clntNumber[i], msg, len); 	// 다른 연결된 클라이언트 소켓으로 msg 전송
+	if(write(fd, msg, len) == -1)
+	{
+		error_handling("Write error occur");
+		return;
+	}
+
+	return;
 }
 
 
 
-void parsing_cmd(char *cmd, struct requested_work)
+
+void parsing_cmd(char *cmd, struct requested_work *req)
 {
 	int N = 0;
 	char *s1 = malloc(sizeof(char) *strlen(cmd));
@@ -196,63 +222,82 @@ void parsing_cmd(char *cmd, struct requested_work)
 
 	char* ptr = strtok(s1, ",");
 
+	printf("\n\n");
 	while(ptr != NULL)
 	{
-		if((N == 0)&&((strncmp(ptr,"r",1)==0)||(strncmp(ptr,"w",1)==0)))
-			strcpy(requested_work.operator, ptr);
-		else if(N == 1)
-			requested_work.blocknum = atoi(ptr);
-		else
+		if((N == 0)&&((strncmp(ptr,"r",1)==0)||(strncmp(ptr,"w",1)==0))) //operator parsing
+			strcpy(req->operator, ptr);
+		else if(N == 1)	//Parsing block number
+		{
+			req->blocknum = atoi(ptr);
+		}
+		else	// Parsing data
 		{
 			rmvfirst(ptr);
-			strcpy(requested_work.data, ptr);
+			strcpy(req->data, ptr);
 		}
 
 		ptr = strtok(NULL, ",");
 		N++;
 
 	}
+	return;
 }
 
 
 
-void bring_data(struct requested_work)
+
+
+void bring_data(struct requested_work *req)
 {
 	//data를 읽어오고 있습니다. 
 	int fd;
-	
-	if((fd = open(_path, O_RDONLY)) == -1)
+	int read_len;
+
+	if((fd = open(file_name, O_RDONLY)) == -1)
 	{
-		printf("%s open error\n", _path);	
-		exit(1);
+		error_handling("Open error occur")
+		return;
 	}
 		
-	printf("fd = %d\n",fd);
-	//read_len = read(fd, requested_data.data, strlen(requested_work.data));
+	read_len = pread(fd,req->data, block_size, block_size*req->blocknum);
 	if(read_len == -1)
 	{
-		printf("read error in bring_data\n");
+		error_handling("Pread error occur");
+		return;
 	}
+	return;
 }
 
 
 
-void store_data(struct requested_work)
+void store_data(int block_number, char *data)
 {
-
 	int fd;
+	int size;
 
-	if((fd = open(_path, O_RDWR | O_CREAT , 0644)) == -1)
-	{
-		printf("%s open error\n", _path);	
-		exit(1);
-	}	
-	printf("fd = %d\n",fd);
-//열고 띄어쓰기! lseek으로 일정 위치에 data저장!!	
-	//write_len = write(fd, requested_data.data, strlen(requested_work.data));
-	if(write_len == -1)
-	{
-		printf("write error in store_data\n");
+	if((fd = open(file_name, )_RDWR | O_CREAT, 0644)) == -1){
+		error_handling("Open error occur.");
+		return;
 	}
-	
+
+	if((size = pwrite(fd, data, strlen(data), block_size*block_number)) == -1){
+		close(fd);
+		error_handling("pwrite error occur");
+		return;
+	}
+
+	close(fd);
+	return;
+}
+
+
+
+void rmv_first(char *buf)
+{
+	int i;
+	for(i = 1; buf[i]; i++)
+		buf[i-1] = buf[i];
+
+	return;
 }
