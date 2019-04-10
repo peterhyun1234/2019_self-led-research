@@ -144,14 +144,16 @@ int main(int argc, char* argv[])
 // <명령어 파싱 + 블록디바이스 접근 + 작업 수행(r/w) + 수행한 정보 보내기>
 					else{
 						
-						parsing_cmd(buf, &rqw[ep_event[i].data.fd]);
-						
-						if((strcmp(rqw[ep_event[i].data.fd].operator, "r") == 0) || (strcmp(rqw[ep_event[i].data.fd].operator, "R") == 0))	//데이터 읽기
+						printf("buf = %s",buf);
+						parsing_cmd(buf, &rqw[ep_events[i].data.fd]);
+						printf("\nop : %s.\nnum : %d.\ndata : %s.\n",rqw[ep_events[i].data.fd].operator, rqw[ep_events[i].data.fd].blocknum, rqw[ep_events[i].data.fd].data);
+					/*	
+						if((strcmp(rqw[ep_events[i].data.fd].operator, "r") == 0) || (strcmp(rqw[ep_events[i].data.fd].operator, "R") == 0))	//데이터 읽기
 						{
 							bring_data(&rqw[ep_events[i].data.fd]);
 							sendMsg(alert_buf, ep_events[i].data.fd);	// 수행한 정보 client에게 보내기
 						}
-						if else((strcmp(rqw[ep_event[i].data.fd].operator, "w") == 0) || (strcmp(rqw[ep_event[i].data.fd].operator, "W") == 0))	//데이터 쓰기
+						else if((strcmp(rqw[ep_events[i].data.fd].operator, "w") == 0) || (strcmp(rqw[ep_events[i].data.fd].operator, "W") == 0))	//데이터 쓰기
 						{
 							store_data(rqw[ep_events[i].data.fd].blocknum, rqw[ep_events[i].data.fd].data);
 						}
@@ -159,7 +161,7 @@ int main(int argc, char* argv[])
 						{
 							printf("operator parsing error\n");
 						}
-					
+					*/
 
 					}
 				
@@ -201,12 +203,11 @@ void setNonBlockingMod(int fd)
 // 자신을 포함한 다른 클라이언트에게 수행되는 작업정보 전송
 void sendMsg(char *msg, int fd)
 {
-	if(write(fd, msg, len) == -1)
+	if(write(fd, msg, sizeof(msg)) == -1)
 	{
 		error_handling("Write error occur");
 		return;
 	}
-
 	return;
 }
 
@@ -233,8 +234,8 @@ void parsing_cmd(char *cmd, struct requested_work *req)
 		}
 		else	// Parsing data
 		{
-			rmvfirst(ptr);
-			strcpy(req->data, ptr);
+			rmv_first(ptr);
+			strncpy(req->data, ptr, strlen(ptr)-2);
 		}
 
 		ptr = strtok(NULL, ",");
@@ -256,7 +257,7 @@ void bring_data(struct requested_work *req)
 
 	if((fd = open(file_name, O_RDONLY)) == -1)
 	{
-		error_handling("Open error occur")
+		error_handling("Open error occur");
 		return;
 	}
 		
@@ -276,7 +277,7 @@ void store_data(int block_number, char *data)
 	int fd;
 	int size;
 
-	if((fd = open(file_name, )_RDWR | O_CREAT, 0644)) == -1){
+	if((fd = open(file_name, O_RDWR | O_CREAT, 0644)) == -1){
 		error_handling("Open error occur.");
 		return;
 	}
