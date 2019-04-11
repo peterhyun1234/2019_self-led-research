@@ -95,7 +95,7 @@ void * recv_msg(void * arg)
 		if(str_len==-1) 
 			return (void*)-1;
 		received_msg[str_len]=0;
-		fputs(received_msg, stdout);
+		puts(received_msg);
 	}
 	return NULL;
 }

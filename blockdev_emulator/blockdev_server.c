@@ -26,7 +26,6 @@ void bring_data(struct requested_work *req);
 void rmv_first(char *buf);
 void error_handling(char* buf);
 void setNonBlockingMod(int fd);
-void sendMsg(char *msg, int fd);
 
 static int clntNumber[MAX_CLNT];
 static int clntCnt=0;	
@@ -42,7 +41,6 @@ int main(int argc, char* argv[])
 	int str_len, i, j;
 
 	char buf[BUF_SIZE];	//받는 명령어를 담는 버퍼
-	char alert_buf[BUF_SIZE];	// client에게 보낼 수행 결과
 
 	// eppoll 사용할 때 필요한 변수선언
 	struct epoll_event* ep_events;
@@ -144,14 +142,12 @@ int main(int argc, char* argv[])
 // <명령어 파싱 + 블록디바이스 접근 + 작업 수행(r/w) + 수행한 정보 보내기>
 					else{
 						
-						printf("buf = %s",buf);
 						parsing_cmd(buf, &rqw[ep_events[i].data.fd]);
-						printf("\nop : %s.\nnum : %d.\ndata : %s.\n",rqw[ep_events[i].data.fd].operator, rqw[ep_events[i].data.fd].blocknum, rqw[ep_events[i].data.fd].data);
-					/*	
+
 						if((strcmp(rqw[ep_events[i].data.fd].operator, "r") == 0) || (strcmp(rqw[ep_events[i].data.fd].operator, "R") == 0))	//데이터 읽기
 						{
 							bring_data(&rqw[ep_events[i].data.fd]);
-							sendMsg(alert_buf, ep_events[i].data.fd);	// 수행한 정보 client에게 보내기
+							write(ep_events[i].data.fd, rqw[ep_events[i].data.fd].data, sizeof(rqw[ep_events[i].data.fd].data));	// 수행한 정보 client에게 보내기
 						}
 						else if((strcmp(rqw[ep_events[i].data.fd].operator, "w") == 0) || (strcmp(rqw[ep_events[i].data.fd].operator, "W") == 0))	//데이터 쓰기
 						{
@@ -161,8 +157,10 @@ int main(int argc, char* argv[])
 						{
 							printf("operator parsing error\n");
 						}
-					*/
 
+						//버퍼 초기화
+						memset(buf, 0, sizeof(buf));
+						memset(rqw[ep_events[i].data.fd].data, 0, sizeof(rqw[ep_events[i].data.fd].data));
 					}
 				
 				}
@@ -197,19 +195,6 @@ void setNonBlockingMod(int fd)
 	fcntl(fd, F_SETFL, flag | O_NONBLOCK); // 기존 플래그에서 논블록 추가 + 플래그 지정
 }
 
-
-
-
-// 자신을 포함한 다른 클라이언트에게 수행되는 작업정보 전송
-void sendMsg(char *msg, int fd)
-{
-	if(write(fd, msg, sizeof(msg)) == -1)
-	{
-		error_handling("Write error occur");
-		return;
-	}
-	return;
-}
 
 
 
@@ -257,7 +242,7 @@ void bring_data(struct requested_work *req)
 
 	if((fd = open(file_name, O_RDONLY)) == -1)
 	{
-		error_handling("Open error occur");
+		error_handling("Open error occur in bring func");
 		return;
 	}
 		
@@ -278,7 +263,7 @@ void store_data(int block_number, char *data)
 	int size;
 
 	if((fd = open(file_name, O_RDWR | O_CREAT, 0644)) == -1){
-		error_handling("Open error occur.");
+		error_handling("Open error occur in store func");
 		return;
 	}
 
