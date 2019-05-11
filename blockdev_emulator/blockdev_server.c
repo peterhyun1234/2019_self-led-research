@@ -141,28 +141,39 @@ int main(int argc, char* argv[])
 
 // <명령어 파싱 + 블록디바이스 접근 + 작업 수행(r/w) + 수행한 정보 보내기>
 					else{
-						
-						parsing_cmd(buf, &rqw[ep_events[i].data.fd]);
-
-						if((strcmp(rqw[ep_events[i].data.fd].operator, "r") == 0) || (strcmp(rqw[ep_events[i].data.fd].operator, "R") == 0))	//데이터 읽기
+						struct command cmd;
+						size_t offset = 0;
+						while (offset < sizeof(cmd))
 						{
-							bring_data(&rqw[ep_events[i].data.fd]);
-							write(ep_events[i].data.fd, rqw[ep_events[i].data.fd].data, sizeof(rqw[ep_events[i].data.fd].data));	// 수행한 정보 client에게 보내기
-						}
-						else if((strcmp(rqw[ep_events[i].data.fd].operator, "w") == 0) || (strcmp(rqw[ep_events[i].data.fd].operator, "W") == 0))	//데이터 쓰기
-						{
-							store_data(rqw[ep_events[i].data.fd].blocknum, rqw[ep_events[i].data.fd].data);
-						}
-						else
-						{
-							printf("operator parsing error\n");
+							offset += recv(fd, ((unsigned char *)&cmd) + offset, sizeof(cmd) - offset);
 						}
 
-						//버퍼 초기화
-						memset(buf, 0, sizeof(buf));
-						memset(rqw[ep_events[i].data.fd].data, 0, sizeof(rqw[ep_events[i].data.fd].data));
+						if(cmd.rw == 'R')
+						{
+							fopen(file);
+							lseek(cmd.block_number * BUF_SIZE);
+							read(file, xxx, BUF_SIZE);
+						}
+
+						int buffer[BUF_SIZE/4];
+						offset = 0;
+						while(offset < BUF_SIZE)
+						{
+							offset += recv(fd, buffer + offset, BUF_SIZE - offset);
+						}
+
+						else if(cmd.rw == 'W'){
+							fopen(file);
+							lseek(cmd.block_number * BUF_SIZE);
+							write(file, xxx, BUF_SIZE);
+
+							//additional point : replication 
+						}
+						close(file);
+					
+					
 					}
-				
+
 				}
 			}
 		}
