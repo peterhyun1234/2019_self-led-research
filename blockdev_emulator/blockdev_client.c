@@ -2,7 +2,7 @@
 	name : blockdev_client.c
 	func : read, write operation to block device.
 	implementation logic : Accessing a block device to bring or transmit data by "Always on server"
-	last edit : 2019.04.04
+	last edit : 2019.05.13
 ***************************************************************************************************/
 
 #include <stdio.h>
@@ -12,7 +12,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <pthread.h>
-#include <blkdev_common.h>
+#include "blkdev_common.h"
 #include <time.h>
 
 void * send_msg(void * arg);
@@ -29,19 +29,20 @@ int main(int argc, char *argv[])
 	void * thread_return;
 
 	//버퍼 내부 설정
-	int buffer[BLOCK_SIZE/4];
+	int buffer[BLOCK_SIZE];
 	int total = 0;
 	float signature = 0.0;
 	srand(time(NULL));
 
-	while(i < BUF_SIZE/4)
+	while(i < BLOCK_SIZE)
 	{
 		buffer[i] = rand()%10;
 		total += buffer[i];
 		i++;
-		if(i%100 == 0)
+		if(i%100 == 0){
 			signature += (float)total/10;
-
+			total = 0;
+		}
 
 	}
 
@@ -102,9 +103,9 @@ void * send_msg(void * arg, int rw, unsigned int block_number, unsigned int *dat
 	}
 
 	offset = 0;
-	while(offset < BUF_SIZE)
+	while(offset < BLOCK_SIZE)
 	{
-		offset += send(sock, data + offset, BUF_SIZE - offset);
+		offset += send(sock, data + offset, BLOCK_SIZE - offset);
 	}
 	return NULL;
 }
@@ -119,7 +120,7 @@ void * send_msg(void * arg, int rw, unsigned int block_number, unsigned int *dat
 void * recv_msg(void * arg) 
 {
 	int sock=*((int*)arg);
-	char received_msg[BLOCK_SIZE];
+	int received_msg[BLOCK_SIZE];
 	int str_len;
 	while(1)
 	{

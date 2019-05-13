@@ -7,23 +7,12 @@
 #include <sys/epoll.h>
 #include <fcntl.h>
 #include <errno.h>
-
-#define BUF_SIZE 4096
+#include "blkdev_common.h"
 #define EPOLL_SIZE 50	// epoll 객체로 관리할 수 있는 파일 디스크립터의 개수
 #define MAX_CLNT 100	// 모니터링 할 파일 디스크립터의 수 지정
 #define file_name "Block_storage.txt"
-#define block_size 512
 
-struct requested_work{
-	char operator[2];
-	int blocknum;
-	char data[BUF_SIZE];
-};
 
-void parsing_cmd(char *cmd, struct requested_work *req);
-void store_data(int block_number, char *data);
-void bring_data(struct requested_work *req);
-void rmv_first(char *buf);
 void error_handling(char* buf);
 void setNonBlockingMod(int fd);
 
@@ -36,11 +25,10 @@ int main(int argc, char* argv[])
 	struct sockaddr_in serv_adr, clnt_adr;
 	socklen_t adr_sz;
 
-	struct requested_work rqw[EPOLL_SIZE];	// 관리하는 클라이언트한테 받는 명령
-
 	int str_len, i, j;
 
-	char buf[BUF_SIZE];	//받는 명령어를 담는 버퍼
+	char buf[BLOCK_SIZE];	//받는 명령어를 담는 버퍼
+
 
 	// eppoll 사용할 때 필요한 변수선언
 	struct epoll_event* ep_events;
@@ -142,34 +130,70 @@ int main(int argc, char* argv[])
 // <명령어 파싱 + 블록디바이스 접근 + 작업 수행(r/w) + 수행한 정보 보내기>
 					else{
 						struct command cmd;
+						int fd;
+
 						size_t offset = 0;
 						while (offset < sizeof(cmd))
 						{
-							offset += recv(fd, ((unsigned char *)&cmd) + offset, sizeof(cmd) - offset);
+							offset += recv(ep_events[i].data.fd, 
+								((unsigned char *)&cmd) + offset, 
+								sizeof(cmd) - offset);
 						}
 
 						if(cmd.rw == 'R')
 						{
-							fopen(file);
-							lseek(cmd.block_number * BUF_SIZE);
-							read(file, xxx, BUF_SIZE);
+							int rcv_Buf[BLOCK_SIZE];
+							
+							if((fd = open(file_name, O_RDONLY)) = -1)
+							{							
+								error_handling("Open error occur in recv_message");
+								return;																
+							}	
+							
+							lseek(fd, cmd.block_number * BLOCK_SIZE, SEEK_SET);
+							offset = 0;
+							
+							while (offset < BLOCK_SIZE)
+							{
+								offset += read(fd, rcv_Buf + offset, BLOCK_SIZE - offset);		
+							}
+															
+						        //client로 보내주자!
+							offset = 0;
+							while (offset < BLOCK_SIZE)
+							{
+								offset += send(ep_events[i].data.fd, rcv_Buf + offset, BLOCK_SIZE - offset);
+							}
+
 						}
 
-						int buffer[BUF_SIZE/4];
+						int DATA[BLOCK_SIZE];
 						offset = 0;
-						while(offset < BUF_SIZE)
+						while(offset < BLOCK_SIZE)
 						{
-							offset += recv(fd, buffer + offset, BUF_SIZE - offset);
+							offset += recv(ep_events[i].data.fd, DATA + offset, BUF_SIZE - offset);
 						}
 
 						else if(cmd.rw == 'W'){
-							fopen(file);
-							lseek(cmd.block_number * BUF_SIZE);
+							open(file_name, );
+							lseek(cmd.block_number * BLOCK_SIZE);
 							write(file, xxx, BUF_SIZE);
+
+							if((fd = open(file_name, O_RDWR | O_CREAT, 0644)) == -1){
+								error_handling("Open error occur in store func");
+								return;
+							}
+							lseek(fd, cmd.block_number * BLOCK_SIZE, SEEK_SET);
+
+							offset = 0;
+							while(offset < BLOCK_SIZE)
+							{
+								offset += write(fd, DATA + offset, BLOCK_SIZE - offset);
+							}
 
 							//additional point : replication 
 						}
-						close(file);
+						close(fd);
 					
 					
 					}
@@ -207,94 +231,3 @@ void setNonBlockingMod(int fd)
 }
 
 
-
-
-
-void parsing_cmd(char *cmd, struct requested_work *req)
-{
-	int N = 0;
-	char *s1 = malloc(sizeof(char) *strlen(cmd));
-
-	strcpy(s1, cmd);
-
-	char* ptr = strtok(s1, ",");
-
-	printf("\n\n");
-	while(ptr != NULL)
-	{
-		if((N == 0)&&((strncmp(ptr,"r",1)==0)||(strncmp(ptr,"w",1)==0))) //operator parsing
-			strcpy(req->operator, ptr);
-		else if(N == 1)	//Parsing block number
-		{
-			req->blocknum = atoi(ptr);
-		}
-		else	// Parsing data
-		{
-			rmv_first(ptr);
-			strncpy(req->data, ptr, strlen(ptr)-2);
-		}
-
-		ptr = strtok(NULL, ",");
-		N++;
-
-	}
-	return;
-}
-
-
-
-
-
-void bring_data(struct requested_work *req)
-{
-	//data를 읽어오고 있습니다. 
-	int fd;
-	int read_len;
-
-	if((fd = open(file_name, O_RDONLY)) == -1)
-	{
-		error_handling("Open error occur in bring func");
-		return;
-	}
-		
-	read_len = pread(fd,req->data, block_size, block_size*req->blocknum);
-	if(read_len == -1)
-	{
-		error_handling("Pread error occur");
-		return;
-	}
-	return;
-}
-
-
-
-void store_data(int block_number, char *data)
-{
-	int fd;
-	int size;
-
-	if((fd = open(file_name, O_RDWR | O_CREAT, 0644)) == -1){
-		error_handling("Open error occur in store func");
-		return;
-	}
-
-	if((size = pwrite(fd, data, strlen(data), block_size*block_number)) == -1){
-		close(fd);
-		error_handling("pwrite error occur");
-		return;
-	}
-
-	close(fd);
-	return;
-}
-
-
-
-void rmv_first(char *buf)
-{
-	int i;
-	for(i = 1; buf[i]; i++)
-		buf[i-1] = buf[i];
-
-	return;
-}

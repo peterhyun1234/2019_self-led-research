@@ -1,4 +1,4 @@
-#define BLOCK_SIZE 4096
+#define BLOCK_SIZE 1024
 
 struct command {
 	int rw;
