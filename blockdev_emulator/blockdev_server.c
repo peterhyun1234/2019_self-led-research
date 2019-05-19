@@ -127,7 +127,6 @@ int main(int argc, char* argv[])
 							break;
 					}
 
-// <명령어 파싱 + 블록디바이스 접근 + 작업 수행(r/w) + 수행한 정보 보내기>
 					else{
 						struct command cmd;
 						int fd;
@@ -171,13 +170,10 @@ int main(int argc, char* argv[])
 						offset = 0;
 						while(offset < BLOCK_SIZE)
 						{
-							offset += recv(ep_events[i].data.fd, DATA + offset, BUF_SIZE - offset);
+							offset += recv(ep_events[i].data.fd, DATA + offset, BLOCK_SIZE - offset);
 						}
 
 						else if(cmd.rw == 'W'){
-							open(file_name, );
-							lseek(cmd.block_number * BLOCK_SIZE);
-							write(file, xxx, BUF_SIZE);
 
 							if((fd = open(file_name, O_RDWR | O_CREAT, 0644)) == -1){
 								error_handling("Open error occur in store func");

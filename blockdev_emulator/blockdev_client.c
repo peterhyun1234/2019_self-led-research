@@ -1,4 +1,4 @@
-/**************************************************************************************************
+/*************************************************************************************************
 	name : blockdev_client.c
 	func : read, write operation to block device.
 	implementation logic : Accessing a block device to bring or transmit data by "Always on server"
@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
 	name : send_msg
 	func : 서버에게 명령을 보낸다.
 	implementation logic : Accessing a block device to bring or transmit data by "Always on server"
-	last edit : 2019.04.04
+	last edit : 2019.05.13
 ***************************************************************************************************/
 void * send_msg(void * arg)   // send thread main
 {
@@ -86,29 +86,28 @@ void * send_msg(void * arg)   // send thread main
 	}
 
 
-
 	printf("%s\n\n", buffer);
 	printf("size of buffer : %d\n", sizeof(buffer));
 	printf("signature code of buffer : %f\n",signature);
 
 	// cmd 설정
-	struct command cmd {
-		rw = 'W';
-		block_number = 321;
-		reclica[0] = 0;
-		reclica[1] = 5;
-		reclica[2] = 3;
-	};
+	struct command cmd;
+	cmd.rw = 'W';
+	cmd.block_number = 321;
+	cmd.replica[0] = 0;
+	cmd.replica[1] = 5;
+	cmd.replica[2] = 3;
+	
 	size_t offset = 0;
 
 	while(offset < sizeof(cmd)) {
-		offset += send(sock, ((unsigned char *)&cmd) + offset, sizeof(cmd) - offset);
+		offset += send(sock, ((unsigned char *)&cmd) + offset, sizeof(cmd) - offset, 0);	// default sending
 	}
 
 	offset = 0;
 	while(offset < BLOCK_SIZE)
 	{
-		offset += send(sock, data + offset, BLOCK_SIZE - offset);
+		offset += send(sock, buffer + offset, BLOCK_SIZE - offset, 0);	//default sending
 	}
 	return NULL;
 }
@@ -118,21 +117,20 @@ void * send_msg(void * arg)   // send thread main
 	name : recv_msg
 	func : 서버로부터 명령을 받는다.
 	implementation logic : Accessing a block device to bring or transmit data by "Always on server"
-	last edit : 2019.04.04
+	last edit : 2019.05.13
 ***************************************************************************************************/
 void * recv_msg(void * arg) 
 {
 	int sock=*((int*)arg);
 	int received_msg[BLOCK_SIZE];
 	int str_len;
-	while(1)
+	int offset = 0;
+	while(offset < BLOCK_SIZE)
 	{
-		str_len=read(sock, received_msg, BLOCK_SIZE-1);
-		if(str_len==-1) 
-			return (void*)-1;
-		received_msg[str_len]=0;
-		puts(received_msg);
+		offset += recv(sock, received_msg + offset, BLOCK_SIZE - offset, 0);	//default resv
 	}
+	for(str_len = 0; str_len > BLOCK_SIZE; str_len++)
+		printf("%d",received_msg[str_len]);
 	return NULL;
 }
 	
