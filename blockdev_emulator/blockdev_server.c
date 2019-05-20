@@ -8,9 +8,6 @@
 #include <fcntl.h>
 #include <errno.h>
 #include "blkdev_common.h"
-#define EPOLL_SIZE 50	// epoll 객체로 관리할 수 있는 파일 디스크립터의 개수
-#define MAX_CLNT 100	// 모니터링 할 파일 디스크립터의 수 지정
-#define file_name "Block_storage.txt"
 
 
 void error_handling(char* buf);
@@ -25,16 +22,18 @@ int main(int argc, char* argv[])
 	struct sockaddr_in serv_adr, clnt_adr;
 	socklen_t adr_sz;
 
-	int str_len, i, j;
-
-	char buf[BLOCK_SIZE];	//받는 명령어를 담는 버퍼
-
+	int i, j;
+	int storage_fd;
+	size_t offset = 0;
+	struct command cmd;
+	char DATA[BLOCK_SIZE];
+	char rcv_Buf[BLOCK_SIZE];
 
 	// eppoll 사용할 때 필요한 변수선언
 	struct epoll_event* ep_events;
 	struct epoll_event event;
 	int epfd, event_cnt;
-	
+
 	if(argc!=2)
 	{
 		printf("Usage : %s <port>\n", argv[0]);
@@ -49,7 +48,7 @@ int main(int argc, char* argv[])
 
 	if(bind(serv_sock, (struct sockaddr*) &serv_adr, sizeof(serv_adr))==-1)
 		error_handling("bind() error");
-	
+
 	if(listen(serv_sock, 5)==-1)
 		error_handling("bind() error");
 
@@ -72,7 +71,7 @@ int main(int argc, char* argv[])
 			puts("epoll_wait() error");
 			break;
 		}
-		
+
 
 		// 여기서부터 "읽기 가능" 한 소켓 디스크립터에 대한 추가 작업 진행
 		for(i=0; i<event_cnt; i++)
@@ -98,15 +97,76 @@ int main(int argc, char* argv[])
 
 			else	// IO : 전송 소켓이 "읽기 가능" 한 경우 입출력 작업 진행
 			{
+
+
 				while(1) // 루프를 돌면서 read를 충분히 호출한다.
 				{
-					str_len = read(ep_events[i].data.fd, buf, BUF_SIZE);	// 읽을 데이터를 buf에 저장
-					
-					if(str_len==0) 	// client가 연결을 끊을 때
+					while (offset < sizeof(cmd))
+					{
+						offset += recv(ep_events[i].data.fd, ((unsigned char *)&cmd) + offset, sizeof(cmd) - offset, 0);
+					}
+
+					printf("rw = %c, num = %d, offset = %d\n", cmd.rw, cmd.block_number, offset);
+
+					if(cmd.rw == 'R')
+					{
+
+						if((storage_fd = open(file_name, O_RDONLY)) == -1)
+						{							
+							error_handling("Open error occur in recv_message");
+						}	
+
+						lseek(storage_fd, cmd.block_number * BLOCK_SIZE, SEEK_SET);
+						offset = 0;
+
+						while (offset < BLOCK_SIZE)
+						{
+							offset += read(storage_fd, rcv_Buf + offset, BLOCK_SIZE - offset);		
+						}
+
+						printf("read file :\n");
+						for(int a = 0; a < BLOCK_SIZE; a++)
+							printf("%s",rcv_Buf);
+
+						//client로 보내주자!
+						offset = 0;
+						while (offset < BLOCK_SIZE)
+						{
+							offset += send(ep_events[i].data.fd, rcv_Buf + offset, BLOCK_SIZE - offset, 0);
+						}
+
+						break;
+					}
+					else if(cmd.rw == 'W'){
+
+						while(offset < BLOCK_SIZE)
+						{
+							offset += recv(ep_events[i].data.fd, DATA + offset, BLOCK_SIZE - offset, 0);
+						}
+						printf("offset = %d\n", offset);
+						printf("입력할 data :\n\n");
+						printf("%s\n",DATA);
+
+
+						if((storage_fd = open(file_name, O_RDWR | O_CREAT, 0644)) == -1){
+							error_handling("Open error occur in store func");
+						}
+						lseek(storage_fd, cmd.block_number * BLOCK_SIZE, SEEK_SET);
+						offset = 0;
+						while(offset < BLOCK_SIZE)
+						{
+							offset += write(storage_fd, DATA + offset, BLOCK_SIZE - offset);
+						}
+						//additional point : replication 
+						break;
+					}
+					close(storage_fd);
+
+					if(offset == 0) 	// client가 연결을 끊을 때
 					{
 						epoll_ctl(epfd, EPOLL_CTL_DEL, ep_events[i].data.fd, NULL);	// 다 읽은 fd를 epoll 객체의 관심 리스트에서 제거
 						close(ep_events[i].data.fd);
-			
+
 						for(j=0; j<clntCnt; j++)	//
 
 						{
@@ -121,81 +181,14 @@ int main(int argc, char* argv[])
 						printf("closed client: %d \n", ep_events[i].data.fd);
 						break;
 					}
-					else if(str_len<0)
+					else if(offset<0)
 					{
-						if(errno = EAGAIN)
+						if(errno == EAGAIN)
 							break;
 					}
-
-					else{
-						struct command cmd;
-						int fd;
-
-						size_t offset = 0;
-						while (offset < sizeof(cmd))
-						{
-							offset += recv(ep_events[i].data.fd, 
-								((unsigned char *)&cmd) + offset, 
-								sizeof(cmd) - offset);
-						}
-
-						if(cmd.rw == 'R')
-						{
-							int rcv_Buf[BLOCK_SIZE];
-							
-							if((fd = open(file_name, O_RDONLY)) = -1)
-							{							
-								error_handling("Open error occur in recv_message");
-								return;																
-							}	
-							
-							lseek(fd, cmd.block_number * BLOCK_SIZE, SEEK_SET);
-							offset = 0;
-							
-							while (offset < BLOCK_SIZE)
-							{
-								offset += read(fd, rcv_Buf + offset, BLOCK_SIZE - offset);		
-							}
-															
-						        //client로 보내주자!
-							offset = 0;
-							while (offset < BLOCK_SIZE)
-							{
-								offset += send(ep_events[i].data.fd, rcv_Buf + offset, BLOCK_SIZE - offset);
-							}
-
-						}
-
-						int DATA[BLOCK_SIZE];
-						offset = 0;
-						while(offset < BLOCK_SIZE)
-						{
-							offset += recv(ep_events[i].data.fd, DATA + offset, BLOCK_SIZE - offset);
-						}
-
-						else if(cmd.rw == 'W'){
-
-							if((fd = open(file_name, O_RDWR | O_CREAT, 0644)) == -1){
-								error_handling("Open error occur in store func");
-								return;
-							}
-							lseek(fd, cmd.block_number * BLOCK_SIZE, SEEK_SET);
-
-							offset = 0;
-							while(offset < BLOCK_SIZE)
-							{
-								offset += write(fd, DATA + offset, BLOCK_SIZE - offset);
-							}
-
-							//additional point : replication 
-						}
-						close(fd);
-					
-					
-					}
-
 				}
 			}
+
 		}
 	}
 	close(serv_sock);
@@ -213,7 +206,7 @@ void error_handling(char *buf)
 	fputc('\n', stderr);
 	exit(1);
 } 
-	
+
 
 
 

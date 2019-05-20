@@ -12,14 +12,14 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <pthread.h>
+#include <fcntl.h>
 #include "blkdev_common.h"
-#include <time.h>
 
 void * send_msg(void * arg);
 void * recv_msg(void * arg);
 void error_handling(char * msg);
 	
-int msg[BLOCK_SIZE];
+char msg[BLOCK_SIZE];
 	
 int main(int argc, char *argv[])
 {
@@ -65,50 +65,35 @@ void * send_msg(void * arg)   // send thread main
 	int sock=*((int*)arg);
 
 	//버퍼 내부 설정
-	int buffer[BLOCK_SIZE];
-	int total = 0;
-	int i = 0;
-	float signature = 0.0;
-	srand(time(NULL));
+	int send_fd;
+	char buffer[BLOCK_SIZE];
+	size_t offset = 0;
+	if((send_fd = open("test.txt", O_RDONLY)) == -1)
+		error_handling("read open error\n");
 
-
-
-	while(i < BLOCK_SIZE)
+	while(offset < BLOCK_SIZE)
 	{
-		buffer[i] = rand()%10;
-		total += buffer[i];
-		i++;
-		if(i%100 == 0){
-			signature += (float)total/10;
-			total = 0;
-		}
-
+		offset += read(send_fd, buffer + offset, BLOCK_SIZE - offset);
 	}
-
-
-	printf("%s\n\n", buffer);
-	printf("size of buffer : %d\n", sizeof(buffer));
-	printf("signature code of buffer : %f\n",signature);
-
 	// cmd 설정
 	struct command cmd;
 	cmd.rw = 'W';
-	cmd.block_number = 321;
+	cmd.block_number = 0;
 	cmd.replica[0] = 0;
 	cmd.replica[1] = 5;
 	cmd.replica[2] = 3;
 	
-	size_t offset = 0;
+	offset = 0;
 
 	while(offset < sizeof(cmd)) {
 		offset += send(sock, ((unsigned char *)&cmd) + offset, sizeof(cmd) - offset, 0);	// default sending
 	}
 
-	offset = 0;
 	while(offset < BLOCK_SIZE)
 	{
 		offset += send(sock, buffer + offset, BLOCK_SIZE - offset, 0);	//default sending
 	}
+	printf("DATA's offset = %d\n", offset);
 	return NULL;
 }
 	
