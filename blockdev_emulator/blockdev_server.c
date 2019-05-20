@@ -106,7 +106,6 @@ int main(int argc, char* argv[])
 						offset += recv(ep_events[i].data.fd, ((unsigned char *)&cmd) + offset, sizeof(cmd) - offset, 0);
 					}
 
-					printf("rw = %c, num = %d, offset = %d\n", cmd.rw, cmd.block_number, offset);
 
 					if(cmd.rw == 'R')
 					{
@@ -124,10 +123,6 @@ int main(int argc, char* argv[])
 							offset += read(storage_fd, rcv_Buf + offset, BLOCK_SIZE - offset);		
 						}
 
-						printf("read file :\n");
-						for(int a = 0; a < BLOCK_SIZE; a++)
-							printf("%s",rcv_Buf);
-
 						//client로 보내주자!
 						offset = 0;
 						while (offset < BLOCK_SIZE)
@@ -138,14 +133,12 @@ int main(int argc, char* argv[])
 						break;
 					}
 					else if(cmd.rw == 'W'){
+						offset = 0;
 
 						while(offset < BLOCK_SIZE)
 						{
 							offset += recv(ep_events[i].data.fd, DATA + offset, BLOCK_SIZE - offset, 0);
 						}
-						printf("offset = %d\n", offset);
-						printf("입력할 data :\n\n");
-						printf("%s\n",DATA);
 
 
 						if((storage_fd = open(file_name, O_RDWR | O_CREAT, 0644)) == -1){
@@ -178,7 +171,6 @@ int main(int argc, char* argv[])
 							}
 						}
 
-						printf("closed client: %d \n", ep_events[i].data.fd);
 						break;
 					}
 					else if(offset<0)

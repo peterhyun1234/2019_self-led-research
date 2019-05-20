@@ -2,7 +2,7 @@
 	name : blockdev_client.c
 	func : read, write operation to block device.
 	implementation logic : Accessing a block device to bring or transmit data by "Always on server"
-	last edit : 2019.05.13
+	last edit : 2019.05.20
 ***************************************************************************************************/
 
 #include <stdio.h>
@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
 	name : send_msg
 	func : 서버에게 명령을 보낸다.
 	implementation logic : Accessing a block device to bring or transmit data by "Always on server"
-	last edit : 2019.05.13
+	last edit : 2019.05.20
 ***************************************************************************************************/
 void * send_msg(void * arg)   // send thread main
 {
@@ -77,8 +77,8 @@ void * send_msg(void * arg)   // send thread main
 	}
 	// cmd 설정
 	struct command cmd;
-	cmd.rw = 'W';
-	cmd.block_number = 0;
+	cmd.rw = 'R';
+	cmd.block_number = 523;
 	cmd.replica[0] = 0;
 	cmd.replica[1] = 5;
 	cmd.replica[2] = 3;
@@ -89,11 +89,11 @@ void * send_msg(void * arg)   // send thread main
 		offset += send(sock, ((unsigned char *)&cmd) + offset, sizeof(cmd) - offset, 0);	// default sending
 	}
 
+	offset = 0;
 	while(offset < BLOCK_SIZE)
 	{
 		offset += send(sock, buffer + offset, BLOCK_SIZE - offset, 0);	//default sending
 	}
-	printf("DATA's offset = %d\n", offset);
 	return NULL;
 }
 	
@@ -107,15 +107,14 @@ void * send_msg(void * arg)   // send thread main
 void * recv_msg(void * arg) 
 {
 	int sock=*((int*)arg);
-	int received_msg[BLOCK_SIZE];
-	int str_len;
+	char received_msg[BLOCK_SIZE];
 	int offset = 0;
 	while(offset < BLOCK_SIZE)
 	{
 		offset += recv(sock, received_msg + offset, BLOCK_SIZE - offset, 0);	//default resv
 	}
-	for(str_len = 0; str_len > BLOCK_SIZE; str_len++)
-		printf("%d",received_msg[str_len]);
+	received_msg[offset] = 0;
+	fputs(received_msg, stdout);
 	return NULL;
 }
 	
