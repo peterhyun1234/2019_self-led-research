@@ -14,12 +14,12 @@ Title: Optimization of communication layer for distributed block storage
     - 과도한 네트워크 트래픽을 줄여 병목현상 방지
 ---------------------------------------- 
 ## 3. System structure (epoll)
-### 3.1. Servers (epoll + multithread)
+### 3.1. block_replicating_system (Replication from server to server)
 ![server_structure](https://user-images.githubusercontent.com/46476398/69224657-4a83cf00-0bc0-11ea-88ac-ecb6e29da5f0.PNG)
 * Master server (in "/block_replicating_system/master_server") 
 * Chunk servers (in "/block_replicating_system/chunk_server1-4") 
 
-### 3.2. Clients (emulator for test)
+### 3.2. Blockdev_emulator (emulator for test)
 ```c
 if(ep_events[i].data.fd==serv_sock)	// accept a client : 듣기소켓이 "읽기 가능" 한 경우에 전송 소켓 생성 
 {
