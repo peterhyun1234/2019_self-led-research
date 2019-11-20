@@ -13,7 +13,7 @@ Title: Optimization of communication layer for distributed block storage
     - 블록을 복제할 때 소프트웨어적 기법들로 속도 증진
     - 과도한 네트워크 트래픽을 줄여 병목현상 방지
 ---------------------------------------- 
-## 3. System structure (epoll)
+## 3. System structure
 ### 3.1. block_replicating_system (Replication from server to server)
 ![server_structure](https://user-images.githubusercontent.com/46476398/69224657-4a83cf00-0bc0-11ea-88ac-ecb6e29da5f0.PNG)
 * Master server (in "/block_replicating_system/master_server") 
