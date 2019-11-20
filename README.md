@@ -16,19 +16,19 @@ Title: Optimization of communication layer for distributed block storage
 ## 3. System structure (epoll)
 ### 3.1. Servers (epoll + multithread)
 ![server_structure](https://user-images.githubusercontent.com/46476398/69224657-4a83cf00-0bc0-11ea-88ac-ecb6e29da5f0.PNG)
-> Master server (in "/block_replicating_system/master_server")
-> Chunk servers (in "/block_replicating_system/chunk_server1-4")
+* Master server (in "/block_replicating_system/master_server") 
+* Chunk servers (in "/block_replicating_system/chunk_server1-4") 
 
 ### 3.2. Clients (emulator for test)
-> One to one structure (in "/blockdev_emulator)
 ```c
 
 ```
-> emulator server
+> emulator server (in "/blockdev_emulator)
+
 ```c
 
 ```
-> emulator client
+> emulator client (in "/blockdev_emulator)
 ----------------------------------------    
 ## 4. How to process
 ### Server, Clients start: start emulating system 
