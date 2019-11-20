@@ -21,12 +21,36 @@ Title: Optimization of communication layer for distributed block storage
 
 ### 3.2. Clients (emulator for test)
 ```c
-
+if(ep_events[i].data.fd==serv_sock)	// accept a client : 듣기소켓이 "읽기 가능" 한 경우에 전송 소켓 생성 
+{
+	// < 에지 트리거 모드를 사용하기 위한 기본적인 설정 >
+	adr_sz = sizeof(clnt_adr);
+	clnt_sock = accept(serv_sock, (struct sockaddr*)&clnt_adr, &adr_sz);
+	setNonBlockingMod(clnt_sock); // 논 블로킹 소켓
+	event.events = EPOLLIN | EPOLLET; // 에지 트리거 모드로  읽기동작을 관찰
+	event.data.fd = clnt_sock; //accept된 소켓을 data의 fd에 지정
+	epoll_ctl(epfd, EPOLL_CTL_ADD, clnt_sock, &event); //epoll 객체에 듣기소켓을 등록
+	clntNumber[clntCnt++] = clnt_sock; // 누가 들어오고 누가 나가는 지 알리기 위해
+}
 ```
 > emulator server (in "/blockdev_emulator)
 
 ```c
+sock=socket(PF_INET, SOCK_STREAM, 0);
 
+memset(&serv_addr, 0, sizeof(serv_addr));
+serv_addr.sin_family=AF_INET;
+serv_addr.sin_addr.s_addr=inet_addr(argv[1]);
+serv_addr.sin_port=htons(atoi(argv[2]));
+  
+if(connect(sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr))==-1)
+	error_handling("connect() error");
+
+pthread_create(&snd_thread, NULL, send_msg, (void*)&sock);
+pthread_create(&rcv_thread, NULL, recv_msg, (void*)&sock);
+pthread_join(snd_thread, &thread_return);
+pthread_join(rcv_thread, &thread_return);
+close(sock);
 ```
 > emulator client (in "/blockdev_emulator)
 ----------------------------------------    
