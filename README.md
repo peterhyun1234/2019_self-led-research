@@ -16,27 +16,27 @@ Title: Optimization of communication layer for distributed block storage
 ## 3. System structure (epoll)
 ### 3.1. Servers (epoll + multithread)
 ![server_structure](https://user-images.githubusercontent.com/46476398/69224657-4a83cf00-0bc0-11ea-88ac-ecb6e29da5f0.PNG)
+> Master server (in "/block_replicating_system/master_server")
+> Chunk servers (in "/block_replicating_system/chunk_server1-4")
 
-### 3.2. Clients (for test)
+### 3.2. Clients (emulator for test)
+> One to one structure (in "/blockdev_emulator)
+```c
+
+```
+> emulator server
+```c
+
+```
+> emulator client
 ----------------------------------------    
 ## 4. How to process
-    $ sudo apt-get update 
-    $ sudo apt-get install nodejs
-    $ sudo apt-get install npm
-```java
-SELECT keywords,
-  (
-    ((LENGTH(keywords) - LENGTH((REPLACE(keywords, '이효리', '')))) / LENGTH('이효리'))
-    + ((LENGTH(keywords) - LENGTH((REPLACE(keywords, '한예슬', '')))) / LENGTH('한예슬'))
-    + ((LENGTH(keywords) - LENGTH((REPLACE(keywords, '전지현', '')))) / LENGTH('전지현'))
-  ) AS score
-FROM sentence
-WHERE keywords LIKE '%이효리%'
-  OR keywords LIKE '%한예슬%'
-  OR keywords LIKE '%전지현%'
-ORDER BY score DESC
-```
-> 중복된 단어를 제외한 단어 적합도(카운트)에 따라 정렬하는 쿼리  
+### Server, Clients start: start emulating system 
+     $ make s
+     $ make c
+### Delete object file: 
+    $ make clean
+> 자세한건 "/blockdev_emulator/Makefile" 참조
 ----------------------------------------
 ## 5. I felt that
     * 처음해보는 연구를 통해서 조금이지만 SW연구 과정을 알 수 있었음
