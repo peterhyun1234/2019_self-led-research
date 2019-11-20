@@ -1,5 +1,5 @@
 # 2019_self-led-research
-Optimization of communication layer for distributed block storage
+Title: Optimization of communication layer for distributed block storage
 ------------------------------------
 ## 1. Research background
 ![bottleneck](https://user-images.githubusercontent.com/46476398/69224648-4788de80-0bc0-11ea-9fbc-1183c16f46ee.PNG)
