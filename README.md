@@ -55,11 +55,21 @@ close(sock);
 > emulator client (in "/blockdev_emulator)
 ----------------------------------------    
 ## 4. How to process
-### Server, Clients start: start emulating system 
-     $ make s
-     $ make c
+``` bash
+### Make exec files
+    $ make all
+
+### Start emulating sytem
+    $ make master
+    $ make servers
+    $ make clients
+
+### Test
+    $ make test
+
 ### Delete object file: 
     $ make clean
+```
 > 자세한건 "/blockdev_emulator/Makefile" 참조
 ----------------------------------------
 ## 5. I felt that
