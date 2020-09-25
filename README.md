@@ -13,6 +13,19 @@ Title: Optimization of communication layer for distributed block storage
     - 블록을 복제할 때 소프트웨어적 기법들로 속도 증진
     - 과도한 네트워크 트래픽을 줄여 병목현상 방지
 ---------------------------------------- 
+
+## 2. Method for increasing transfer ratio
+![pipeline](https://user-images.githubusercontent.com/46476398/94241750-01bf4400-ff50-11ea-806b-b7f36ab368a0.png)
+> 명령어 파이프라이닝 예제 <br>
+    출처: https://www.harucat.com/entry/%EB%AA%85%EB%A0%B9%EC%96%B4-%ED%8C%8C%EC%9D%B4%ED%94%84%EB%9D%BC%EC%9D%B4%EB%8B%9D-2
+### 2.1 Distriduted block system
+    - 다른 기계의 스토리지를 원격으로 접근해서 사용
+    - 로컬 스토리지의 공간의 한계를 극복
+    - 원격 접근이기 때문에 네트워크 전송이 중요함
+    - 데이터 복제 저장을 통한 결함 감래 시스템
+    - 복제할 때 병목현상을 방지하기 위한 릴레이 전송  
+---------------------------------------- 
+
 ## 3. System structure
 ### 3.1. block_replicating_system (Replication from server to server)
 ![server_structure](https://user-images.githubusercontent.com/46476398/69224657-4a83cf00-0bc0-11ea-88ac-ecb6e29da5f0.PNG)
