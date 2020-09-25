@@ -18,12 +18,11 @@ Title: Optimization of communication layer for distributed block storage
 ![pipeline](https://user-images.githubusercontent.com/46476398/94241750-01bf4400-ff50-11ea-806b-b7f36ab368a0.png)
 > 명령어 파이프라이닝 예제 <br>
     출처: https://www.harucat.com/entry/%EB%AA%85%EB%A0%B9%EC%96%B4-%ED%8C%8C%EC%9D%B4%ED%94%84%EB%9D%BC%EC%9D%B4%EB%8B%9D-2
-### 2.1 Distriduted block system
-    - 다른 기계의 스토리지를 원격으로 접근해서 사용
-    - 로컬 스토리지의 공간의 한계를 극복
-    - 원격 접근이기 때문에 네트워크 전송이 중요함
-    - 데이터 복제 저장을 통한 결함 감래 시스템
+### 2.1. Pipelining in block replication
     - 복제할 때 병목현상을 방지하기 위한 릴레이 전송  
+    - 릴레이로 전송 시 속도가 줄어드는 단점을 파이프라인으로 최적화
+    - 소켓 통신하는 과정에서 멀티스레드를 활용
+    - 순서에 맞춰서 블록을 받으면서 받은 블록을 다른 서버로 전송하는 논리
 ---------------------------------------- 
 
 ## 3. System structure
